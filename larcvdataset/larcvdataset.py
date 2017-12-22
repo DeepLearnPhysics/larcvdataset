@@ -1,11 +1,12 @@
 import os
 import ROOT
 from larcv import larcv
+larcv.PSet # touch this to force libBase to load, which has CreatePSetFromFile
 from larcv.dataloader2 import larcv_threadio
 import numpy
 from torch.utils.data import Dataset
 
-class LArCVDataSet(Dataset):
+class LArCVDataset(Dataset):
     """ LArCV data set interface for PyTorch"""
 
     def __init__( self, cfg, verbosity=0 ):
@@ -20,7 +21,13 @@ class LArCVDataSet(Dataset):
         if not os.path.exists(self.cfg):
             raise ValueError("Could not find filler configuration file: %s"%(self.cfg))
 
-        #self.pset = larcv.PSet("LArCVDataSet",open(self.cfg).read())
+        linepset = open(self.cfg,'r').readlines()
+        self.cfgname = linepset[0].split(":")[0].strip()
+        self.pset = larcv.CreatePSetFromFile(self.cfg,self.cfgname).get("larcv::PSet")(self.cfgname)
+        datastr_v = self.pset.get("std::vector<std::string>")("ProcessName")
+        self.datalist = []
+        for i in range(0,datastr_v.size()):
+            self.datalist.append(datastr_v[i])
         
         self.io = larcv_threadio()        
         self.io.configure(self.filler_cfg)
@@ -30,10 +37,9 @@ class LArCVDataSet(Dataset):
 
     def __getitem__(self, idx):
         self.io.next()
-        # todo: replace this is names from configuration file
-        data = self.io.fetch_data("image")
-        labels = self.io.fetch_data("label")
-        out = {"image":data.data(),"label":labels.data()}
+        out = {}
+        for name in self.datalist:
+            out[name] = self.io.fetch_data(name).data()
         return out
         
 
