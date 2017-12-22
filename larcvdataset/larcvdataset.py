@@ -30,9 +30,10 @@ class LArCVDataSet(Dataset):
 
     def __getitem__(self, idx):
         self.io.next()
+        # todo: replace this is names from configuration file
         data = self.io.fetch_data("image")
         labels = self.io.fetch_data("label")
-        out = {"image":data.data(),"labels":labels.data()}
+        out = {"image":data.data(),"label":labels.data()}
         return out
         
 
