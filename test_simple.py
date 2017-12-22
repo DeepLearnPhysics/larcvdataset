@@ -11,3 +11,11 @@ filler_cfg = {"filler_name":"ThreadProcessor",
 proc.configure(filler_cfg)
 
 proc.start_manager(10)
+proc.next()
+img = proc.fetch_data("image")
+lbl = proc.fetch_data("label")
+
+print img.dim()
+print lbl.dim()
+
+proc.stop_manager()
