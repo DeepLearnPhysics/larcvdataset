@@ -8,6 +8,53 @@ This module assumes
 * numpy: an optional LArCV2 dependency but necessary for LArCV2's python interface
 * LArCV2 is built and the proper environment variables have been setup (via configure.sh)
 
+## Installing this module
+
+### Option 1
+
+Set the path of the module to `PYTHONPATH`.
+
+    export PYTHONPATH=[location of this folder]:${PYTHONPATH}
+
+or go into this folder and run `setenv.sh`
+
+    source setenv.sh
+
+
+### Option 2
+
+(Eventually will add an installer script.)
+
+
+## Using the module
+
+To create an instance of the dataset loader:
+
+    from larcvdataset import LArCVDataset
+
+    io = LArCVDataset("example_dataloader.cfg")
+
+where `example_dataloader.cfg`, which can be found in this folder, can be your configuration file for your input.
+
+Dump the current configuration
+
+    io.dumpcfg()
+
+Start the threads to load data
+
+    io.start(10)
+
+where `10` is the batch size. You can change this as you see fit.
+
+To get data, just use the `[i]` operator. where `i` is an integer.
+Note that right now, the value of `i` is not used.
+This operator returns a dictionary with data.
+See the example script (described below) as an example of how to use it.
+
+To stop the threads before cleaning up
+
+  io.stop()
+
 ## Example script
 
 You can use `test_dataloader.py` to test the setup.
@@ -34,6 +81,5 @@ Also, the file has 5 particle types in it.  So `ProcessList::label::PdgClassList
     ...
 
 Again, if you are using another LArCV2 file, you might have to change this.
-
 
 
