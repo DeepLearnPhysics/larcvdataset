@@ -1,4 +1,4 @@
-import os,sys
+import os,sys, time
 import torchvision
 import ROOT
 from ROOT import larcv
@@ -31,14 +31,23 @@ print "Press [ENTER] to start filler loop"
 print "Will retrieve data (dictionary of numpy arrays) and print their shapes. Enjoy."
 raw_input()
 
-io.start(5)
+io.start(50)
 
-for i in range(0,10):
+tottime = 0.0
+nbatches = 50
+
+start = time.time()
+
+for i in range(0,nbatches):
     print "Batch #%d"%(i)
     data = io[i]
     for name in io.datalist:
         print " ",name,":",data[name].shape,
     print
+
+elapsed = time.time()-start
+print "Elapsed time: ",elapsed
+print "time per batch: ",elapsed/nbatches
 
 io.stop()
 

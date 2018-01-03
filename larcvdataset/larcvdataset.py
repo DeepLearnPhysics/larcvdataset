@@ -1,4 +1,4 @@
-import os
+import os,time
 import ROOT
 from larcv import larcv
 larcv.PSet # touch this to force libBase to load, which has CreatePSetFromFile
@@ -37,6 +37,7 @@ class LArCVDataset(Dataset):
         if loadallinmem:
             nevents = len(self)
             print "Attempting to load all ",nevents," into memory. good luck"
+            start = time.time()
             # get first to get shape
             self.start(1)
             self.io.next()
@@ -54,6 +55,7 @@ class LArCVDataset(Dataset):
                 for name in self.datalist:
                     out = self.io.fetch_data(name).data()                    
                     self.alldata[name][i,:] = out[0,:]
+            print "elapsed time to bring data into memory: ",time.time()-start,"sec"
                 
             self.stop()
             
