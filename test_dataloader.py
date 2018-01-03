@@ -20,7 +20,7 @@ and put the location of the file into example_dataloader.cfg
 ===================================================================
 """
 
-io = LArCVDataset("example_dataloader.cfg")
+io = LArCVDataset("example_dataloader.cfg","ThreadProcessor",loadallinmem=True)
 #io.dumpcfg()
 
 print "Number of entries: ",len(io)
