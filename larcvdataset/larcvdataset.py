@@ -70,7 +70,7 @@ class LArCVDataset(Dataset):
 
     def _loadinmem(self):
         """load data into memory"""
-        nevents = len(self)
+        nevents = int(self.io.fetch_n_entries())
         if self.max_inmem_events>0 and nevents>self.max_inmem_events:
             nevents = self.max_inmem_events
         
