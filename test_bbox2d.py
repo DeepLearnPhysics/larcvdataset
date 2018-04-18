@@ -28,17 +28,23 @@ cfg="""BBox2DTest:{
       BBox2DProducer: "boundingbox"
       ProjectionID: 0
       MaxNumBoxes: 5
+      ConvertXYtoPixel: true
+      ImageProducerForMeta: "wire"
     }
     bboxp1: {
       BBox2DProducer: "boundingbox"
       ProjectionID: 1
       MaxNumBoxes: 5
+      ConvertXYtoPixel: true
+      ImageProducerForMeta: "wire"
     }
     bboxp2: {
       Verbosity: 3
       BBox2DProducer: "boundingbox"
       ProjectionID: 2
       MaxNumBoxes: 5
+      ConvertXYtoPixel: true
+      ImageProducerForMeta: "wire"
     }
   }
 }
