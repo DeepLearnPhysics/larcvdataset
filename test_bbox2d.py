@@ -16,8 +16,8 @@ Test script for loading larcv::BBox2D using LArCVDataset
 
 cfg="""BBox2DTest:{
   Verbosity: 3
-  NumThreads: 1
-  NumBatchStorage: 1
+  NumThreads: 2
+  NumBatchStorage: 2
   RandomAccess: true
   InputFiles: ["larcv2_michel.root"]
   ProcessName: ["bboxp0","bboxp1","bboxp2"]
