@@ -5,8 +5,10 @@ from larcv import larcv
 import numpy as np
 
 # Data interface to LArCV1. Simple interface. No threading. Used for deploy.
-class LArCV1Dataset:
+class LArCV1Dataset(object):
     def __init__(self, inputfile, products, store_eventids=False, randomize=False ):
+
+        super(LArCV1Dataset,self).__init__()
 
         # inputs
         # cfgfile: path to configuration. see test.py.ipynb for example of configuration
@@ -81,6 +83,8 @@ class LArCV1Dataset:
                 batch_products[(ktype,producer_name)][i,:] = entry_arr[:]
             for ii in range(3):
                 batch_products["_rse_"][i,ii] = self.rse[ii]
+
+            self.delivered += 1
         
         return batch_products
 

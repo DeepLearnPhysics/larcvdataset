@@ -1,6 +1,7 @@
-import os,sys
+import os,sys,time
 
 from larcvdataset import LArCV1Dataset
+from larcvdataset import LArCV1PyTorchDataset
 
 from larcv import larcv
 
@@ -12,7 +13,16 @@ if __name__ == "__main__":
                    (larcv.kProductImage2D,"weight")]
 
     io = LArCV1Dataset( testfile, productlist )
-    data = io.getbatch( 5 )
 
-    for d,array in data.items():
-        print d,array.shape
+    tloop = time.time()
+    batchsize = 5
+    nbatches = 10
+    for i in range(0,nbatches):
+        data = io.getbatch( batchsize )
+        for d,array in data.items():
+            print d,array.shape
+        print data["_rse_"]
+    tloop = time.time()-tloop
+    print "Time for test: %.2f secs (%.2f secs/batch)"%(tloop,tloop/nbatches)
+
+    iopytorch = LArCV1PyTorchDataset( testfile, productlist )
