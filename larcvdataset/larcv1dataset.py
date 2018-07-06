@@ -66,6 +66,7 @@ class LArCV1Dataset(object):
                 self.delivered = 0
         
         batch_products = {}
+        self.image2d_meta_dict = {} # we save meta info for image2dproducts here (__getitem__ knows to fill this)
         batch_products["_rse_"] = np.zeros( (self._batch_size, 3), dtype=np.int )
         indices = self.permuted[self.delivered:self.delivered+self._batch_size]
         for i,index in enumerate(indices): 
@@ -81,6 +82,7 @@ class LArCV1Dataset(object):
                     batch_arr = np.zeros( (self._batch_size,)+entry_arr.shape, dtype=entry_arr.dtype )
                     batch_products[(ktype,producer_name)] = batch_arr
                 batch_products[(ktype,producer_name)][i,:] = entry_arr[:]
+
             for ii in range(3):
                 batch_products["_rse_"][i,ii] = self.rse[ii]
 
@@ -109,8 +111,11 @@ class LArCV1Dataset(object):
             if ktype==larcv.kProductImage2D:
                 img_v = ev_data.Image2DArray()
                 img_np = np.zeros( (img_v.size(),img_v[0].meta().cols(),img_v[0].meta().rows()), dtype=np.float32 )
+                meta_v = []
                 for iimg in range(img_v.size()):
                     img_np[iimg,:] = larcv.as_ndarray( img_v[iimg] )[:]
+                    meta_v.append( img_v[iimg].meta() )
+                self.image2d_meta_dict[(ktype,producer_name)] = meta_v
                 numpy_arrays[(ktype,producer_name)] = img_np
             else:
                 raise RuntimeError("product,\"{}\", not yet supported. please support it by adding it here.".format(ktype))
@@ -120,3 +125,6 @@ class LArCV1Dataset(object):
             output.append(v)
 
         return output
+
+    def getmeta( self, name ):
+        return self.image2d_meta_dict[(larcv.kProductImage2D,name)]
