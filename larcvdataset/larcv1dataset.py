@@ -126,5 +126,8 @@ class LArCV1Dataset(object):
 
         return output
 
+    def __len__(self):
+        return self.nentries
+
     def getmeta( self, name ):
         return self.image2d_meta_dict[(larcv.kProductImage2D,name)]
