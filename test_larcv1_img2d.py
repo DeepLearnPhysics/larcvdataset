@@ -12,7 +12,8 @@ if __name__ == "__main__":
                    (larcv.kProductImage2D,"label"),
                    (larcv.kProductImage2D,"weight")]
 
-    io = LArCV1Dataset( testfile, productlist )
+    # if we use randomize it is much slower (can't take advantge of ROOT's neighboring entry caching
+    io = LArCV1Dataset( testfile, productlist, randomize=True )
 
     tloop = time.time()
     batchsize = 5
@@ -25,4 +26,4 @@ if __name__ == "__main__":
     tloop = time.time()-tloop
     print "Time for test: %.2f secs (%.2f secs/batch)"%(tloop,tloop/nbatches)
 
-    iopytorch = LArCV1PyTorchDataset( testfile, productlist )
+    #iopytorch = LArCV1PyTorchDataset( testfile, productlist )

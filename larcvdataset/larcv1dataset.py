@@ -52,7 +52,7 @@ class LArCV1Dataset(object):
             
         # get entry indices of batch
         if self.randomize:
-            if self.delivered+self._batch_size>=self.nentries:
+            if self.delivered+self._batch_size>=self.nentries or self.permuted is None:
                 # refresh the permutated event indices
                 self.permuted = np.random.permutation( self.nentries )
                 # reset the delivered count
