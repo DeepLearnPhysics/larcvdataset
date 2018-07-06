@@ -1,15 +1,18 @@
 import os,time
 import ROOT
 from larcv import larcv
-larcv.PSet # touch this to force libBase to load, which has CreatePSetFromFile
-from larcv.dataloader2 import larcv_threadio
 import numpy as np
 from torch.utils.data import Dataset
 
 class LArCVDataset(Dataset):
-    """ LArCV data set interface for PyTorch"""
+    """ LArCV2 data set interface for PyTorch"""
 
     def __init__( self, cfg, fillername, verbosity=0, loadallinmem=False, randomize_inmem_data=True, max_inmem_events=-1 ):
+
+        # we hide this hear so that we can use this package for both larcv and larcv2
+        larcv.PSet # touch this to force libBase to load, which has CreatePSetFromFile
+        from larcv.dataloader2 import larcv_threadio
+        
         self.verbosity = verbosity
         self.batchsize = None
         self.randomize_inmem_data = randomize_inmem_data
