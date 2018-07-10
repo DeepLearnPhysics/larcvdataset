@@ -6,7 +6,8 @@ This module assumes
 
 * ROOT6: LArCV2's primary dependency
 * numpy: an optional LArCV2 dependency but necessary for LArCV2's python interface
-* LArCV2 is built and the proper environment variables have been setup (via configure.sh)
+* LArCV1 or LArCV2 is built and the proper environment variables have been setup (via configure.sh).
+  Note that you can only have one set up in a given shell at a time!
 
 ## Installing this module
 
@@ -26,7 +27,7 @@ or go into this folder and run `setenv.sh`
 (Eventually will add an installer script.)
 
 
-## Using the module
+## Using the module (LArCV2)
 
 To create an instance of the dataset loader:
 
@@ -55,7 +56,7 @@ To stop the threads before cleaning up
 
   io.stop()
 
-## Example script
+### Example script
 
 You can use `test_dataloader.py` to test the setup.
 
@@ -81,5 +82,9 @@ Also, the file has 5 particle types in it.  So `ProcessList::label::PdgClassList
     ...
 
 Again, if you are using another LArCV2 file, you might have to change this.
+
+### Using the Module (LArCV1)
+
+to be written
 
 
