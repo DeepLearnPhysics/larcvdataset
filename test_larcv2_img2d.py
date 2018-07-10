@@ -15,11 +15,13 @@ To run this, download the test data to your computer from
 
 http://www.stanford.edu/~kterao/public_data/v0.1.0/2d/classification/five_particles/practice_train_5k.root
 
-and put the location of the file into example_dataloader.cfg
+and put the location of the file into 'example_dataloader.cfg' 
+which is found in the same directory as this script.
 
 ===================================================================
 """
 
+# We setup the larcvdataset using the configuration file
 io = LArCVDataset("example_dataloader.cfg","ThreadProcessor",loadallinmem=True)
 #io.dumpcfg()
 
