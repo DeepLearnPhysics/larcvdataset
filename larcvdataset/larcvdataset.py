@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 class LArCVDataset(Dataset):
     """ LArCV2 data set interface for PyTorch"""
 
-    def __init__( self, cfg, fillername, verbosity=0, loadallinmem=False, randomize_inmem_data=True, max_inmem_events=-1 ):
+    def __init__( self, cfg, fillername, verbosity=0, loadallinmem=False, randomize_inmem_data=True, store_eventids=False, max_inmem_events=-1 ):
 
         # we hide this hear so that we can use this package for both larcv and larcv2
         larcv.PSet # touch this to force libBase to load, which has CreatePSetFromFile
@@ -19,6 +19,7 @@ class LArCVDataset(Dataset):
         self.loadallinmem = loadallinmem
         self.max_inmem_events = max_inmem_events
         self.cfg = cfg
+        self.store_eventids = store_eventids
         
         # we setup the larcv threadfiller class, which handles io from larcv files
 
@@ -58,10 +59,12 @@ class LArCVDataset(Dataset):
 
     def __getitem__(self, idx):
         if not self.loadallinmem:
-            self.io.next()
+            self.io.next(store_event_ids=self.store_eventids)
             out = {}
             for name in self.datalist:
                 out[name] = self.io.fetch_data(name).data()
+            if self.store_eventids:
+                out["event_ids"] = self.io.fetch_event_ids()
         else:
             indices = np.random.randint(len(self),size=self.batchsize)
             out = {}
@@ -83,8 +86,8 @@ class LArCVDataset(Dataset):
         # start threadio
         self.start(1)
 
-        # get one data element to get shape        
-        self.io.next()
+        # get one data element to get shape
+        self.io.next(store_event_ids=self.store_eventids)        
         firstout = {}
         for name in self.datalist:
             firstout[name] = self.io.fetch_data(name).data()
@@ -93,7 +96,7 @@ class LArCVDataset(Dataset):
             self.alldata[name] = np.zeros( (nevents,firstout[name].shape[1]), firstout[name].dtype )
             self.alldata[name][0] = firstout[name][0,:]
         for i in range(1,nevents):
-            self.io.next()
+            self.io.next(store_event_ids=self.store_eventids)        
             if i%100==0:
                 print "loading event %d of %d"%(i,nevents)
             for name in self.datalist:
