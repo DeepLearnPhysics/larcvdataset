@@ -83,8 +83,50 @@ Also, the file has 5 particle types in it.  So `ProcessList::label::PdgClassList
 
 Again, if you are using another LArCV2 file, you might have to change this.
 
-### Using the Module (LArCV1)
+## Using the Module (LArCV1)
 
-to be written
+To create an instance of the dataset loader for LArCV1:
+
+    import ROOT
+    from larcv import larcv
+    from larcvdataset import LArCV1Dataset
+    productlist = [(larcv.kProductImage2D,"wire"),(larcv.kProductImage2D,"segment")]
+    io = LArCV1Dataset( "mydata.root", productlist, randomize=True )
+
+That's it. The product list is a list of tuples pairing the type of larcv1 data product with the name of the tree in the file.
+Currently only `larcv.kProductImage2D` and `larcv.kProductBBox2D` are supported.
+
+If you have a larcv1 file and want to know what the names of your trees might be, you can
+
+    > root mydata.root
+    > .ls
+    
+you'll see something like
+
+```
+root [0] 
+Attaching file mydata.root as _file0...
+(TFile *) 0x563126201fb0
+root [1] .ls
+TFile**		mydata.root	
+ TFile*		mydata.root	
+  KEY: TTree	image2d_wire_tree;45	wire tree
+  KEY: TTree	image2d_ts_keyspweight_tree;17	ts_keyspweight tree
+  KEY: TTree	image2d_segment_tree;13	segment tree
+  KEY: TTree	image2d_segment_tree;12	segment tree
+  KEY: TTree	partroi_segment_tree;1	segment tree
+  ...
+root [2] 
+```
+
+The ROOT trees which store `Image2D` are, unsurprisingly, prefixed with `image2d_`. The name of the tree is the string between `image2d_` and `_tree`.
+
+### test script
+
+You can test the interface out with `test_larcv1_img2d.py`.  To run it,
+
+    python test_larcv1_img2d.py mydata.root wire segment ts_keyspweight
+
+Note that the above uses the tree names in the above example.
 
 

@@ -7,10 +7,20 @@ from larcv import larcv
 
 if __name__ == "__main__":
 
-    testfile = "/media/hdd1/larbys/ssnet_cosmic_retraining/cocktail/ssnet_retrain_cocktail_p01.root"
-    productlist = [(larcv.kProductImage2D,"adc"),
-                   (larcv.kProductImage2D,"label"),
-                   (larcv.kProductImage2D,"weight")]
+    #testfile = "/media/hdd1/larbys/ssnet_cosmic_retraining/cocktail/ssnet_retrain_cocktail_p01.root"
+    #productlist = [(larcv.kProductImage2D,"adc"),
+    #               (larcv.kProductImage2D,"label"),
+    #               (larcv.kProductImage2D,"weight")]
+
+    if len(sys.argv)<=2:
+        print "usage: python test_larcv1_image2d [larcv1 root file] [product list...]"
+        print "example (using 2018-ssnet training data): python train00.root wire segment ts_keyspweight"
+        sys.exit(0)
+    
+    testfile = sys.argv[1]
+    products = sys.argv[2:]
+    productlist = [ (larcv.kProductImage2D, x ) for x in products ]
+    
 
     # if we use randomize it is much slower (can't take advantge of ROOT's neighboring entry caching
     io = LArCV1Dataset( testfile, productlist, randomize=True )
