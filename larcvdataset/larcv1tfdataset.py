@@ -1,4 +1,4 @@
-import os
+import os,sys
 import tensorflow as tf
 from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import dtypes
@@ -30,22 +30,13 @@ class LArCV1TFDataset(tf.data.Dataset):
     else:
       self.process_cfg = process_cfg
 
-
-
     
   def _as_variant_tensor(self):
     # Actually construct the graph node for the dataset op.
     #
     # This method will be invoked when you create an iterator on this dataset
-    # or a dataset derived from it.
-    # print my_reader_dataset_module.__dict__
-    # print help(my_reader_dataset_module)
-    # print self.filenames, type(self.filenames)
-    # filenames_op = constant_op.constant(self.filenames, dtypes.string)
-    # print filenames_op
-    
+    # or a dataset derived from it.    
     return my_reader_dataset_module.larcv1tf_dataset(filenames=self.filenames, producers=self.producers, processor_cfg=self.process_cfg)
-    #return my_reader_dataset_module.Larcv1tfDataset(filenames_op)
 
   # The following properties define the structure of each element: a scalar
   # <a href="../api_docs/python/tf/string"><code>tf.string</code></a> tensor. Change these properties to match the `output_dtypes()`
@@ -53,23 +44,43 @@ class LArCV1TFDataset(tf.data.Dataset):
   # the structure of each element.
   @property
   def output_types(self):
-    return tf.string
+    if len(self.producers)>1:
+      return len(self.producers)*(tf.float32,)
+    else:
+      return tf.float32
 
   @property
   def output_shapes(self):
-    return tf.TensorShape([])
+    if len(self.producers)>1:
+      return (tf.TensorShape([512,512,3]),)*len(self.producers)
+    else:
+      return tf.TensorShape([512,512,3])
 
   @property
   def output_classes(self):
-    return tf.Tensor
+    if len(self.producers)>1:
+      return (tf.Tensor,)*len(self.producers)
+    else:
+      return tf.Tensor
 
 if __name__ == "__main__":
   # Create a LArCV1TFDataset and print its elements.
+  import cv2 as cv
+  producerlist = ["wire","segment","ts_keyspweight"]
   with tf.Session() as sess:
-    iterator = LArCV1TFDataset(["val.root"],["adc"],"processor.cfg").make_one_shot_iterator()
+    data = LArCV1TFDataset(["../../trainingdata/val.root"],producerlist,"test.cfg")
+    iterator = data.make_one_shot_iterator()
     next_element = iterator.get_next()
+    i = 0
     try:
       while True:
-        print(sess.run(next_element))  # Prints "LArCV1TFDataset!" ten times.
+        print i        
+        out = sess.run(next_element)
+        for img,name in zip(out,producerlist):
+          cv.imwrite( "%s_%d.png"%(name,i), img )
+        #print(sess.run(next_element))  # Prints "LArCV1TFDataset!" ten times.
+        i+=1
+        if i>20:
+          break
     except tf.errors.OutOfRangeError:
       pass

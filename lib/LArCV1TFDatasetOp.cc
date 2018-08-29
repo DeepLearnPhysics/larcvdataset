@@ -9,6 +9,8 @@
 #include "tensorflow/core/platform/file_system.h"
 
 #include "Processor/ProcessDriver.h"
+#include "DataFormat/EventImage2D.h"
+#include "DataFormat/Image2D.h"
 
 
 namespace larcv1dataset {
@@ -16,7 +18,10 @@ namespace larcv1dataset {
   
   using ::std::string;
   using ::tensorflow::Tensor;
+  using ::tensorflow::TensorShape;
+  using ::tensorflow::DataType;  
   using ::tensorflow::DT_STRING;
+  using ::tensorflow::DT_FLOAT;  
   using ::tensorflow::PartialTensorShape;
   using ::tensorflow::Status;
 
@@ -36,22 +41,6 @@ namespace larcv1dataset {
       // Parse and validate any input tensors that define the dataset using
       // `ctx->input()` or the utility function
       // `ParseScalarArgument<T>(ctx, &arg)`.
-      //std::cout << "makedatasets" << std::endl;
-
-      
-      
-      // const Tensor* filenames_tensor;
-      // OP_REQUIRES_OK(ctx, ctx->input("filenames", &filenames_tensor));
-      // OP_REQUIRES(ctx, filenames_tensor->dims() <= 1,
-      // 		  tensorflow::errors::InvalidArgument("`filenames` must be a scalar or a vector."));
-
-      // std::cout << "passed checks" << std::endl;
-      // std::vector<std::string> filenames;
-      // filenames.reserve(filenames_tensor->NumElements());
-      // for (int i = 0; i < filenames_tensor->NumElements(); ++i) {
-      // 	filenames.push_back(filenames_tensor->flat<std::string>()(i));
-      // }
-      
       // Create the dataset object, passing any (already-validated) arguments from
       // attrs or input tensors.
       *output = new Dataset(ctx, _filenames, _producers, _processor_cfg);
@@ -65,24 +54,53 @@ namespace larcv1dataset {
 	      const std::vector<std::string>& filenames,
 	      const std::vector<std::string>& producers,
 	      const std::string& cfg )
-	: GraphDatasetBase(ctx), _filenames(filenames), _producers(producers), _processor_cfg(cfg), _plarcv_processor(nullptr) {}
+	: GraphDatasetBase(ctx), _filenames(filenames), _producers(producers), _processor_cfg(cfg), _plarcv_processor(nullptr) {
+	_plarcv_processor = new larcv::ProcessDriver( _processor_cfg );
+	_plarcv_processor->override_input_file( _filenames );
+	_plarcv_processor->initialize();
+	_plarcv_processor->process_entry();// process first entry
+
+	larcv::IOManager& io = _plarcv_processor->io_mod();	  	  
+	for ( auto& producer : _producers ) {
+	  larcv::EventImage2D* evdata = (larcv::EventImage2D*)io.get_data( larcv::kProductImage2D, producer );
+	  const std::vector<larcv::Image2D>& img_v = evdata->Image2DArray();
+	  int nchs = img_v.size();
+	  // image2d, outer dim is cols
+	  int rows = img_v.front().meta().rows();
+	  int cols = img_v.front().meta().cols();
+	  PartialTensorShape shape( {cols,rows,nchs} );
+	  _output_shapes.push_back( shape );
+	}
+      }
+
+
+      virtual ~Dataset() {
+      	// destroy the processor
+      	_plarcv_processor->finalize();
+      	delete _plarcv_processor;
+      };
       
       std::unique_ptr<tensorflow::IteratorBase> MakeIteratorInternal(const string& prefix) const override {
 	return std::unique_ptr<tensorflow::IteratorBase>(new Iterator({this, tensorflow::strings::StrCat(prefix, "::Larcv1tf")}));
       }
 
+      
       // Record structure: Each record is represented by a scalar string tensor.
       //
       // Dataset elements can have a fixed number of components of different
       // types and shapes; replace the following two methods to customize this
       // aspect of the dataset.
       const tensorflow::DataTypeVector& output_dtypes() const override {
-	static auto* const dtypes = new tensorflow::DataTypeVector({DT_STRING});
+	int ntensors = _producers.size();
+	tensorflow::DataTypeVector dd(ntensors);
+	for ( int i=0; i<ntensors; i++)
+	  dd[i] = DT_FLOAT;
+	static auto* const dtypes = new tensorflow::DataTypeVector( dd );
 	return *dtypes;
       }
       const std::vector<PartialTensorShape>& output_shapes() const override {
 	static std::vector<PartialTensorShape>* shapes =
-	  new std::vector<PartialTensorShape>({ {}});
+	  new std::vector<PartialTensorShape>( _output_shapes  );
 	return *shapes;
       }
 
@@ -97,16 +115,9 @@ namespace larcv1dataset {
 				tensorflow::Node** output) const override {
 	// Construct nodes to represent any of the input tensors from this
 	// object's member variables using `b->AddScalar()` and `b->AddVector()`.
-	std::cout << "AsGraphDefInternal" << std::endl;
-	tensorflow::Node* filenames = nullptr;
-	TF_RETURN_IF_ERROR(b->AddVector(_filenames, &filenames));
-	TF_RETURN_IF_ERROR(b->AddDataset(this,
-					 //{std::make_pair(0,filenames)},
-					 {filenames},
-					 output));
 
-	// std::vector<tensorflow::Node*> input_tensors;
-	// TF_RETURN_IF_ERROR(b->AddDataset(this, input_tensors, output));
+	std::vector<tensorflow::Node*> input_tensors;
+	TF_RETURN_IF_ERROR(b->AddDataset(this, input_tensors, output));
 	
 	return Status::OK();
       }
@@ -134,12 +145,38 @@ namespace larcv1dataset {
 			       bool* end_of_sequence) override {
 	  // NOTE: `GetNextInternal()` may be called concurrently, so it is
 	  // recommended that you protect the iterator state with a mutex.
-	  tensorflow::mutex_lock l(mu_);
+
+	  tensorflow::mutex_lock l(mu_);	  
+	  
+	  // we get the list of items from the _producers list
+	  // get next entry
+	  larcv::IOManager& io = dataset()->_plarcv_processor->io_mod();	  
+	  bool ok = dataset()->_plarcv_processor->process_entry();
+
+	  for (int ip=0; ip<(int)dataset()->_producers.size(); ip++) {
+	    std::string producer = dataset()->_producers[ip];
+	    larcv::EventImage2D* evdata = (larcv::EventImage2D*)io.get_data( larcv::kProductImage2D, producer );
+	    const std::vector<larcv::Image2D>& img_v = evdata->Image2DArray();
+	    int nchs = img_v.size();
+	    // image2d, outer dim is cols
+	    int rows = img_v.front().meta().rows();
+	    int cols = img_v.front().meta().cols();
+	    tensorflow::Tensor tensor( ctx->allocator({}), DT_FLOAT, TensorShape( {cols,rows,nchs} ) );
+	    auto flat = tensor.flat<float>();
+	    for ( int ic=0; ic<nchs; ic++ ) {
+	      const std::vector<float>& vec = img_v[ic].as_vector();
+	      for (int icol=0; icol<cols; icol++) {
+		for (int irow=0; irow<rows; irow++)
+		  flat( icol*rows*nchs + irow*nchs + ic ) = vec[icol*rows + irow]; // this sucks
+	      }
+	    }
+	    out_tensors->emplace_back( std::move(tensor) );
+	  }	    
 	  if (i_ < 10) {
-	    // Create a scalar string tensor and add it to the output.
-	    tensorflow::Tensor record_tensor(ctx->allocator({}), DT_STRING, {});
-	    record_tensor.scalar<string>()() = "Larcv1tf!";
-	    out_tensors->emplace_back(std::move(record_tensor));
+	    //   // Create a scalar string tensor and add it to the output.
+	    //   tensorflow::Tensor record_tensor(ctx->allocator({}), DT_STRING, {});
+	    //   record_tensor.scalar<string>()() = "Larcv1tf!";
+	    //   out_tensors->emplace_back(std::move(record_tensor));
 	    ++i_;
 	    *end_of_sequence = false;
 	  } else {
@@ -177,7 +214,7 @@ namespace larcv1dataset {
       std::vector<std::string> _producers; // name of image2d trees to grab tensors from      
       std::string              _processor_cfg; // process driver name
       larcv::ProcessDriver*    _plarcv_processor; // process driver instance
-
+      std::vector< PartialTensorShape > _output_shapes;
     };// end of class Dataset : public tensorflow::GraphDatasetBase
 
   protected:
@@ -198,7 +235,7 @@ REGISTER_OP("Larcv1tfDataset")
     .Attr("filenames: list(string)")
     .Attr("processor_cfg: string")
     .Attr("producers: list(string)")
-    .Output("handle: variant")
+    .Output("handle: variant") 
     .SetIsStateful()
     .SetShapeFn(tensorflow::shape_inference::ScalarShape);
 

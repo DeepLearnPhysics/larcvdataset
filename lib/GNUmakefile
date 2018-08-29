@@ -2,6 +2,7 @@ CXX      =  g++
 
 CFLAGS   =   -g -fPIC -m64 -std=c++11
 CFLAGS   += `root-config --cflags`
+CFLAGS   += -DNDEBUG
 
 INCLUDES =  `root-config --incdir`
 INCLUDES += `larlite-config --includes`

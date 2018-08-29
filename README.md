@@ -1,6 +1,11 @@
 # larcvdataset
 
-This module defines a concrete instance of the pytorch Dataset class. It serves as an interface to data stored in LArCV2 root files.
+This module defines interfaces to LArCV 1 and 2 data.
+
+We attempt to support
+
+* pytorch's Dataset interface
+* tensorflows's tf.data Dataset operation interface 
 
 This module assumes
 
@@ -25,6 +30,12 @@ or go into this folder and run `setenv.sh`
 ### Option 2
 
 (Eventually will add an installer script.)
+
+### If you need the LArCV1DatasetOp for Tensorflow
+
+You need to build it. From the top repository folder (same place as this readme):
+
+    make
 
 
 ## Using the module (LArCV2)
