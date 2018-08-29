@@ -1,14 +1,21 @@
+#include <sys/stat.h>
+#include <vector>
 #include <string>
 #include "tensorflow/core/framework/common_shape_fns.h"
 #include "tensorflow/core/framework/dataset.h"
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/shape_inference.h"
+#include "tensorflow/core/lib/io/buffered_inputstream.h"
+#include "tensorflow/core/platform/file_system.h"
+
+#include "Processor/ProcessDriver.h"
 
 
 namespace larcv1dataset {
-namespace {
+  //  namespace {
   
   using ::std::string;
+  using ::tensorflow::Tensor;
   using ::tensorflow::DT_STRING;
   using ::tensorflow::PartialTensorShape;
   using ::tensorflow::Status;
@@ -19,24 +26,46 @@ namespace {
     Larcv1tfDatasetOp(tensorflow::OpKernelConstruction* ctx) : DatasetOpKernel(ctx) {
       // Parse and validate any attrs that define the dataset using
       // `ctx->GetAttr()`, and store them in member variables.
+      OP_REQUIRES_OK(ctx,ctx->GetAttr("filenames", &_filenames));
+      OP_REQUIRES_OK(ctx,ctx->GetAttr("producers", &_producers));
+      OP_REQUIRES_OK(ctx,ctx->GetAttr("processor_cfg", &_processor_cfg));
     };
 
     void MakeDataset(tensorflow::OpKernelContext* ctx,
 		     tensorflow::DatasetBase** output) override {
-      // Parse and validate any input tensors 0that define the dataset using
+      // Parse and validate any input tensors that define the dataset using
       // `ctx->input()` or the utility function
       // `ParseScalarArgument<T>(ctx, &arg)`.
+      //std::cout << "makedatasets" << std::endl;
+
+      
+      
+      // const Tensor* filenames_tensor;
+      // OP_REQUIRES_OK(ctx, ctx->input("filenames", &filenames_tensor));
+      // OP_REQUIRES(ctx, filenames_tensor->dims() <= 1,
+      // 		  tensorflow::errors::InvalidArgument("`filenames` must be a scalar or a vector."));
+
+      // std::cout << "passed checks" << std::endl;
+      // std::vector<std::string> filenames;
+      // filenames.reserve(filenames_tensor->NumElements());
+      // for (int i = 0; i < filenames_tensor->NumElements(); ++i) {
+      // 	filenames.push_back(filenames_tensor->flat<std::string>()(i));
+      // }
       
       // Create the dataset object, passing any (already-validated) arguments from
       // attrs or input tensors.
-      *output = new Dataset(ctx);
+      *output = new Dataset(ctx, _filenames, _producers, _processor_cfg);
     };
 
   private:
       
     class Dataset : public tensorflow::GraphDatasetBase {
     public:
-      Dataset(tensorflow::OpKernelContext* ctx) : GraphDatasetBase(ctx) {}
+      Dataset(tensorflow::OpKernelContext* ctx,
+	      const std::vector<std::string>& filenames,
+	      const std::vector<std::string>& producers,
+	      const std::string& cfg )
+	: GraphDatasetBase(ctx), _filenames(filenames), _producers(producers), _processor_cfg(cfg), _plarcv_processor(nullptr) {}
       
       std::unique_ptr<tensorflow::IteratorBase> MakeIteratorInternal(const string& prefix) const override {
 	return std::unique_ptr<tensorflow::IteratorBase>(new Iterator({this, tensorflow::strings::StrCat(prefix, "::Larcv1tf")}));
@@ -68,8 +97,17 @@ namespace {
 				tensorflow::Node** output) const override {
 	// Construct nodes to represent any of the input tensors from this
 	// object's member variables using `b->AddScalar()` and `b->AddVector()`.
-	std::vector<tensorflow::Node*> input_tensors;
-	TF_RETURN_IF_ERROR(b->AddDataset(this, input_tensors, output));
+	std::cout << "AsGraphDefInternal" << std::endl;
+	tensorflow::Node* filenames = nullptr;
+	TF_RETURN_IF_ERROR(b->AddVector(_filenames, &filenames));
+	TF_RETURN_IF_ERROR(b->AddDataset(this,
+					 //{std::make_pair(0,filenames)},
+					 {filenames},
+					 output));
+
+	// std::vector<tensorflow::Node*> input_tensors;
+	// TF_RETURN_IF_ERROR(b->AddDataset(this, input_tensors, output));
+	
 	return Status::OK();
       }
 
@@ -132,7 +170,22 @@ namespace {
 	tensorflow::mutex mu_;
 	tensorflow::int64 i_ GUARDED_BY(mu_);
       };// end of class Iterator : public tensorflow::DatasetIterator<Dataset>
+
+    protected:
+      // internal data members
+      std::vector<std::string> _filenames; // input filenames
+      std::vector<std::string> _producers; // name of image2d trees to grab tensors from      
+      std::string              _processor_cfg; // process driver name
+      larcv::ProcessDriver*    _plarcv_processor; // process driver instance
+
     };// end of class Dataset : public tensorflow::GraphDatasetBase
+
+  protected:
+    // internal data members
+    std::vector<std::string>  _filenames; // input filenames
+    std::vector<std::string>  _producers; // name of image2d trees to grab tensors from      
+    std::string               _processor_cfg; // process driver name
+
   };//class Larcv1tfDatasetOp : public tensorflow::DatasetOpKernel
 
 // Register the op definition for Larcv1tfDataset.
@@ -142,6 +195,9 @@ namespace {
 //
 // Add any attrs and input tensors that define the dataset here.
 REGISTER_OP("Larcv1tfDataset")
+    .Attr("filenames: list(string)")
+    .Attr("processor_cfg: string")
+    .Attr("producers: list(string)")
     .Output("handle: variant")
     .SetIsStateful()
     .SetShapeFn(tensorflow::shape_inference::ScalarShape);
@@ -150,6 +206,6 @@ REGISTER_OP("Larcv1tfDataset")
 REGISTER_KERNEL_BUILDER(Name("Larcv1tfDataset").Device(tensorflow::DEVICE_CPU),
 			Larcv1tfDatasetOp);
 			  
-}  // namespace
+  //}  // namespace
 }  // namespace larcv1dataset
 
