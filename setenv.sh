@@ -13,3 +13,5 @@ fi
 
 # Add to python path
 [[ ":$PYTHONPATH:" != *":${LARCVDATASET_BASEDIR}:"* ]] && PYTHONPATH="${LARCVDATASET_BASEDIR}:${PYTHONPATH}"
+# Add to ld library path
+[[ ":$LD_LIBRARY_PATH:" != *":${LARCVDATASET_BASEDIR}/lib:"* ]] && LD_LIBRARY_PATH="${LARCVDATASET_BASEDIR}/lib:${LD_LIBRARY_PATH}"
