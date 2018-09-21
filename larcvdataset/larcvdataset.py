@@ -39,7 +39,7 @@ class LArCVDataset(Dataset):
         # will use these as the names of the data products loaded. store in self.datalist
         self.pset = larcv.CreatePSetFromFile(self.cfg,self.cfgname).get("larcv::PSet")(self.cfgname)
         datastr_v = self.pset.get("std::vector<std::string>")("ProcessName")
-        typestr_v = self.pset.get("std::vector<std::string>")("ProcessType")        
+        typestr_v = self.pset.get("std::vector<std::string>")("ProcessType")
         self.datalist = []
         self.dtypelist  = []
         for i in range(0,datastr_v.size()):
