@@ -39,9 +39,12 @@ class LArCVDataset(Dataset):
         # will use these as the names of the data products loaded. store in self.datalist
         self.pset = larcv.CreatePSetFromFile(self.cfg,self.cfgname).get("larcv::PSet")(self.cfgname)
         datastr_v = self.pset.get("std::vector<std::string>")("ProcessName")
+        typestr_v = self.pset.get("std::vector<std::string>")("ProcessType")        
         self.datalist = []
+        self.dtypelist  = []
         for i in range(0,datastr_v.size()):
             self.datalist.append(datastr_v[i])
+            self.dtypelist.append(typestr_v[i])
 
         # finally, configure io
         self.io = larcv_threadio()        
@@ -61,8 +64,9 @@ class LArCVDataset(Dataset):
         if not self.loadallinmem:
             self.io.next(store_event_ids=self.store_eventids)
             out = {}
-            for name in self.datalist:
+            for dtype,name in zip(self.dtypelist,self.datalist):
                 out[name] = self.io.fetch_data(name).data()
+                
             if self.store_eventids:
                 out["event_ids"] = self.io.fetch_event_ids()
         else:
