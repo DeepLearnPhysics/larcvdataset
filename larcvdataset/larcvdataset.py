@@ -7,14 +7,14 @@ from torch.utils.data import Dataset
 class LArCVDataset(Dataset):
     """ LArCV2 data set interface for PyTorch"""
 
-    def __init__( self, cfg, fillername, verbosity=0, loadallinmem=False, randomize_inmem_data=True, store_eventids=False, max_inmem_events=-1 ):
+    def __init__( self, cfg, fillername, verbosity=0, loadallinmem=False, randomize_inmem_data=True, store_eventids=False, max_inmem_events=-1, batchsize=None ):
 
         # we hide this hear so that we can use this package for both larcv and larcv2
         larcv.PSet # touch this to force libBase to load, which has CreatePSetFromFile
-        from larcv.dataloader2 import larcv_threadio
+        from larcv.dataloader3 import larcv_threadio
         
         self.verbosity = verbosity
-        self.batchsize = None
+        self.batchsize = batchsize
         self.randomize_inmem_data = randomize_inmem_data
         self.loadallinmem = loadallinmem
         self.max_inmem_events = max_inmem_events
@@ -47,11 +47,15 @@ class LArCVDataset(Dataset):
             self.dtypelist.append(typestr_v[i])
 
         # finally, configure io
+        print "CONFIGURE"
         self.io = larcv_threadio()        
         self.io.configure(self.filler_cfg)
 
         if loadallinmem:
             self._loadinmem()
+
+        if self.batchsize is not None:
+            self.start(self.batchsize)
             
 
     def __len__(self):
@@ -62,7 +66,8 @@ class LArCVDataset(Dataset):
 
     def __getitem__(self, idx):
         if not self.loadallinmem:
-            self.io.next(store_event_ids=self.store_eventids)
+            #self.io.next(store_event_ids=self.store_eventids)
+            self.io.next()
             out = {}
             for dtype,name in zip(self.dtypelist,self.datalist):
                 out[name] = self.io.fetch_data(name).data()
