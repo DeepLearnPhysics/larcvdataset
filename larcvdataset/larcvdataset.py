@@ -11,7 +11,7 @@ class LArCVDataset(Dataset):
 
         # we hide this hear so that we can use this package for both larcv and larcv2
         larcv.PSet # touch this to force libBase to load, which has CreatePSetFromFile
-        from larcv.dataloader3 import larcv_threadio
+        from larcv.dataloader2 import larcv_threadio
         
         self.verbosity = verbosity
         self.batchsize = batchsize
