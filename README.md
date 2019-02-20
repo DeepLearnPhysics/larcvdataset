@@ -129,7 +129,7 @@ You need to build it. From the top repository folder (same place as this readme)
     make
 
 
-# Setting up the modeul
+# Setting up the module
 
 (to do) Environment variables, loading the dependencies, etc.
 
