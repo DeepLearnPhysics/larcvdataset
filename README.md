@@ -10,7 +10,7 @@ We attempt to support
 # What this module is trying to do
 
 LArCV ROOT files typically contain images which we want to load and pass to deep learning frameworks.
-See the brief [section](#Structure of LArCV ROOT files) on the contents of the larcv root file.
+See the brief [section](#structure-of-larcv-root-files) on the contents of the larcv root file.
 
 We aim to load images along with meta-data:
 * as fast as possible and
