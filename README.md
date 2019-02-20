@@ -58,13 +58,13 @@ def load_data( io ):
 ```
 
 By providing this function to the user, we provide flexibilty.
-However, sometimes, you just want the images in the tree, yo. We provide a class
-(to be written -- sorry) that you can use to do this common task.
+Of course, sometimes, users like "just gimme the images in the file, yo".
+We provide a class (*to be written -- sorry*) that you can use to do this common task.
 
-We will pass this function into a "Worker".
-Copies of the worker will be created by a server or feeder so that we
-continuously load images into memory for the file.
-This is the attempt at speed.
+We will our event loading function into a "server" (instance of `LArCVServer` class)
+which will create workers, whose job is to load images
+from the file into memory and pass it to the server upon request.
+This is our attempt at speed.
 
 Here is us setting this up (assume we defined a function `load_data` to do the above):
 
@@ -91,8 +91,8 @@ print "elapsed time, ",tend,"secs ",tend/float(nentries)," sec/batch"
 ```
 
 You can find this whole example in the repository file, `test_server.py`.
-You can use this to see how fast you can load images.  Hopefully, we're talking 100 milliseconds or so.
-
+You can use this to see how fast you can load images.
+Hopefully, we're talking 100 milliseconds or so.
 
 # Dependencies
 
@@ -126,20 +126,11 @@ You need to build it. From the top repository folder (same place as this readme)
     make
 
 
-# Using the module (LArCV)
+# Setting up the modeul
 
-[to do]
+(to do) Environment variables, loading the dependencies, etc.
 
-To create an instance of the dataset loader for LArCV1:
-
-    import ROOT
-    from larcv import larcv
-    from larcvdataset import LArCV1Dataset
-    productlist = [(larcv.kProductImage2D,"wire"),(larcv.kProductImage2D,"segment")]
-    io = LArCV1Dataset( "mydata.root", productlist, randomize=True )
-
-That's it. The product list is a list of tuples pairing the type of larcv1 data product with the name of the tree in the file.
-Currently only `larcv.kProductImage2D` and `larcv.kProductBBox2D` are supported.
+# Appendix
 
 ## Structure of LArCV ROOT files
 
