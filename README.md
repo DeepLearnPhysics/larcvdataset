@@ -35,6 +35,9 @@ def load_data( io ):
   nimgs  = ev_adc.Image2DArray().size()
   if nimgs==0:
     data["adc"] = None
+    # by default, if we return None, False, we will sample again.
+    # entries with None value are turned into a numpy array with a single entry of zero
+    # (editor note: well, actually ... eventually this is the behavior we will implement -- right now it just crashes -- probably)
     return data
 
   #ImageMeta object which contains coordinate information for image
