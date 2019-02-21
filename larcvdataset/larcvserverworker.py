@@ -15,10 +15,14 @@ os.environ["GLOG_minloglevel"] = "1"
 class LArCVServerWorker( WorkerService ):
     """ This worker uses a user function to prepare data. """
 
-    def __init__( self,identity,inputfile,ipaddress,load_func,batchsize=None,verbosity=0):
+    def __init__( self,identity,inputfile,ipaddress,load_func,batchsize=None,verbosity=0,tickbackward=False):
         super( LArCVServerWorker, self ).__init__(identity,ipaddress,verbosity=verbosity)
         self.inputfile = inputfile
-        self.io = larcv.IOManager(larcv.IOManager.kREAD)
+        if not tickbackward:
+            self.io = larcv.IOManager(larcv.IOManager.kREAD,identity)
+        else:
+            # this supports reading old larcv1 data
+            self.io = larcv.IOManager(larcv.IOManager.kREAD,identity,larcv.IOManager.kTickBackward)
         self.io.add_in_file(self.inputfile)
         self.io.initialize()
         self.nentries = self.io.get_n_entries()
