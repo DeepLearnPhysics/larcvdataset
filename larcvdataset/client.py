@@ -22,7 +22,7 @@ class ServerClient(object):
         self._verbosity = verbosity        
         self.load_socket()
         self.nmsgs = 0
-
+        self.products = None
 
         self._ttracker = OrderedDict()
         self._ttracker["send/receive::triptime"] = 0.0
@@ -70,7 +70,7 @@ class ServerClient(object):
                 troundtrip = time.time()-troundtrip
                 self._ttracker["send/receive::triptime"] += troundtrip
                 self.nmsgs += 1
-                self.process_reply( reply )
+                self.products = self.process_reply( reply )
                 return True
                 
             else:

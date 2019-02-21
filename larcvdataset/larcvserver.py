@@ -38,12 +38,27 @@ class LArCVServer:
         # client
         self.client = LArCVServerClient(identity,address)
 
-        print "LArCV2Server. Workers initialized. Client synced with workers. Ready to feed data."
+        print "LArCVServer. Workers initialized. Client synced with workers. Ready to feed data."
 
 
     def get_batch_dict(self):
-        self.client.send_receive()
-        return self.client.products
+        ntries = 10
+        status = False
+        while ntries>=0 and not status:
+            #print "LArCVServer: use client to ask for result"
+            status = self.client.send_receive()
+            if not status:
+                time.wait(1)
+                ntries -= 1
+            if status:
+                break
+            
+        if not status:
+            raise RuntimeError("Did not receive data")
+        else:
+            return self.client.get_products()
+        # never get here
+        return None
 
     def __len__(self):
         raise NotImplemented("Not implemented yet")
