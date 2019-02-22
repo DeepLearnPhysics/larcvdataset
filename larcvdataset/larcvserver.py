@@ -24,6 +24,8 @@ class LArCVServer:
         address = "ipc://{}".format(feeddir) # client front end
         os.system("mkdir -p {}".format(feeddir))
 
+        self.identity = identity
+        
         # start the server
         self.pserver = Process(target=__start_larcv2_server__,args=(address,server_verbosity,))
         self.pserver.daemon = True
