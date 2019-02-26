@@ -17,13 +17,20 @@ class LArCVServerWorker( WorkerService ):
 
     def __init__( self,identity,inputfile,ipaddress,load_func,batchsize=None,verbosity=0,tickbackward=False):
         super( LArCVServerWorker, self ).__init__(identity,ipaddress,verbosity=verbosity)
-        self.inputfile = inputfile
+        if type(inputfile) is str:
+            self.inputfiles = [inputfile]
+        elif type(inputfile) is list:
+            self.inputfiles = inputfile
+        else:
+            raise ValueError("argument inputfile should be either str or list. received {}".format(type(inputfile)))
+            
         if not tickbackward:
             self.io = larcv.IOManager(larcv.IOManager.kREAD,identity)
         else:
             # this supports reading old larcv1 data
             self.io = larcv.IOManager(larcv.IOManager.kREAD,identity,larcv.IOManager.kTickBackward)
-        self.io.add_in_file(self.inputfile)
+        for ifile in self.inputfiles:
+            self.io.add_in_file(ifile)
         self.io.initialize()
         self.nentries = self.io.get_n_entries()
         self.batchsize = batchsize
@@ -46,29 +53,23 @@ class LArCVServerWorker( WorkerService ):
         tstart = time.time()
         # get data
         # we set the seed with the time before calling random
+        maxtries = 100
         np.random.seed(seed=None)
-        indices = np.random.randint(0,high=self.nentries,size=(self.batchsize))
+        indices = np.random.randint(0,high=self.nentries,size=(self.batchsize+maxtries))
         batch = []
-        keylist = None
-        for ib,idx in enumerate(indices):
-            self.io.read_entry(idx)
-            batch.append( self.load_func( self.io ) )
-            if keylist is None:
-                keylist = batch[-1].keys()
 
-        # self.products = {}
-        # for k in keylist:
-        #     nchannels = 1
-        #     datashape = batch[0][k].shape
-        #     if len(datashape)==3:
-        #         nchannels = datashape[0]
-        #     self.products[k] = np.zeros( (self.batchsize,nchannels,datashape[-2],datashape[-1]), dtype=batch[0][k].dtype )
-        # for ib,batchdata in enumerate(batch):
-        #     for k in keylist:
-        #         if self.products[k].shape[1]>1:
-        #             self.products[k][ib,:,:,:] = batchdata[k][:,:,:]
-        #         else:
-        #             self.products[k][ib,0,:,:] = batchdata[k][:,:]
+        itry = 0
+        while (len(batch)<self.batchsize and itry<maxtries):
+            idx = indices[itry]
+            data = None
+            self.io.read_entry(idx)
+            data = self.load_func(self.io)
+            if data is not None:
+                batch.append( data )
+            else:
+                print "LArCVServerWorker[{}] fetched data return none, try {} of {}".format(self._identity,itry+1,maxtries)
+                pass # try again
+            itry += 1
             
         self.num_reads += 1
         tload = time.time()-tstart
