@@ -165,7 +165,18 @@ root [2]
 
 The ROOT trees which store `Image2D` are, unsurprisingly, prefixed with `image2d_`. The name of the tree is the string between `image2d_` and `_tree`.
 
+## User load data function spec
+
+The function the user provides to load the numpy arrays from the larcv ROOT file should do the following
+
+* return a dictionary with keys being strings containing the names of data objects, values being numpy arrays
+* the numpy arrays may be at most 3D with format (C,H,W) or 2D with format (H,W)
+* if the entry provided to the function has data you do not want to send to the network (example, values happen to be empty),
+  you can return `None`. `larcvserverworker` will rerun the user function with a new entry.  The number of resampling before throwing an error
+  is 100. (In future can be configured.)
+
 # To Do
 
 * `larcvserverworker` needs a fixed index shuffle to draw from or run in non-random access
 * provide option to split inputfile list to different workers. load workers in non-random access. will make things faster.
+* allow user to set maximum number of tries to successfully run user data loading function
