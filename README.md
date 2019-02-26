@@ -165,3 +165,7 @@ root [2]
 
 The ROOT trees which store `Image2D` are, unsurprisingly, prefixed with `image2d_`. The name of the tree is the string between `image2d_` and `_tree`.
 
+# To Do
+
+* `larcvserverworker` needs a fixed index shuffle to draw from or run in non-random access
+* provide option to split inputfile list to different workers. load workers in non-random access. will make things faster.
