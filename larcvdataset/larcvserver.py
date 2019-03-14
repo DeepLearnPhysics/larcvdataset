@@ -10,15 +10,18 @@ def __start_larcv2_server__(ipaddress,verbose):
     server = Server(ipaddress,server_verbosity=verbose)
     server.start()
 
-def __start_workers_v2__(identity,inputfile,address,loadfunc,batchsize,worker_verbosity,tickbackward):
+def __start_workers_v2__(identity,inputfile,address,loadfunc,batchsize,
+                         worker_verbosity,tickbackward,readonly_products):
     worker = LArCVServerWorker(identity,inputfile,address,loadfunc,
-                               batchsize=batchsize,verbosity=worker_verbosity,tickbackward=tickbackward)
+                               batchsize=batchsize,verbosity=worker_verbosity,
+                               tickbackward=tickbackward,readonly_products=readonly_products)
     worker.do_work()
     
 class LArCVServer:
 
     def __init__(self,batchsize,identity,load_func,inputfile,nworkers,
-                 server_verbosity=0,worker_verbosity=0,io_tickbackward=False):
+                 server_verbosity=0,worker_verbosity=0,io_tickbackward=False,
+                 readonly_products=None):
 
         feeddir = "/tmp/feed{}".format(identity)
         address = "ipc://{}".format(feeddir) # client front end
@@ -27,14 +30,16 @@ class LArCVServer:
         self.identity = identity
         
         # start the server
-        self.pserver = Process(target=__start_larcv2_server__,args=(address,server_verbosity,))
+        self.pserver = Process(target=__start_larcv2_server__,args=(address,server_verbosity))
         self.pserver.daemon = True
         self.pserver.start()
 
         # create the workers
         self.pworkers = [ Process(target=__start_workers_v2__,
                                   args=("{}-{}".format(identity,n),
-                                        inputfile,address,load_func,batchsize,worker_verbosity,io_tickbackward))
+                                        inputfile,address,load_func,batchsize,
+                                        worker_verbosity,io_tickbackward,
+                                        readonly_products))
                           for n in xrange(nworkers) ]
         for pworker in self.pworkers:
             pworker.daemon = True

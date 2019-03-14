@@ -15,7 +15,9 @@ os.environ["GLOG_minloglevel"] = "1"
 class LArCVServerWorker( WorkerService ):
     """ This worker uses a user function to prepare data. """
 
-    def __init__( self,identity,inputfile,ipaddress,load_func,batchsize=None,verbosity=0,tickbackward=False):
+    def __init__( self,identity,inputfile,ipaddress,load_func,
+                  batchsize=None,verbosity=0,tickbackward=False,
+                  readonly_products=None):
         super( LArCVServerWorker, self ).__init__(identity,ipaddress,verbosity=verbosity)
         if type(inputfile) is str:
             self.inputfiles = [inputfile]
@@ -31,6 +33,15 @@ class LArCVServerWorker( WorkerService ):
             self.io = larcv.IOManager(larcv.IOManager.kREAD,identity,larcv.IOManager.kTickBackward)
         for ifile in self.inputfiles:
             self.io.add_in_file(ifile)
+
+        if readonly_products is not None:
+            if type(readonly_products) is not list and type(readonly_products) is not tuple:
+                raise ValueError("readonly_products argument should be a list or tuple of (\"name\",larcv type) pairs")
+            for product in readonly_products:
+                if len(product)<2 or type(product[1]) is not int or type(product[0]) is not str:
+                    raise ValueError("readonly_products argument should be a list or tuple of (\"name\",larcv type) pairs")
+                self.io.specify_data_read( product[1], product[0] )
+                
         self.io.initialize()
         self.nentries = self.io.get_n_entries()
         self.batchsize = batchsize
