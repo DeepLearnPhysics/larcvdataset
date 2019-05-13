@@ -10,13 +10,20 @@ def __start_larcv2_server__(ipaddress,verbose):
     server = Server(ipaddress,server_verbosity=verbose)
     server.start()
 
-def __start_workers_v2__(identity,inputfile,address,loadfunc,batchsize,worker_verbosity):
-    worker = LArCVServerWorker(identity,inputfile,address,loadfunc,batchsize=batchsize,verbosity=worker_verbosity)
+def __start_workers_v2__(identity,inputfiles,address,loadfunc,func_params,
+                         batchsize,worker_verbosity,tickbackward,seed):
+    worker = LArCVServerWorker(identity,inputfiles,address,loadfunc,
+                               func_params=func_params,batchsize=batchsize,
+                               verbosity=worker_verbosity,tickbackward=tickbackward,seed=seed)
     worker.do_work()
     
 class LArCVServer:
 
-    def __init__(self,batchsize,identity,load_func,inputfile,nworkers,server_verbosity=0,worker_verbosity=0):
+    def __init__(self,batchsize,identity,load_func,inputfiles,nworkers,
+                 func_params={},
+                 io_tickbackward=False,
+                 server_verbosity=0,
+                 worker_verbosity=0):
 
         feeddir = "/tmp/feed{}".format(identity)
         address = "ipc://{}".format(feeddir) # client front end
@@ -27,10 +34,51 @@ class LArCVServer:
         self.pserver.daemon = True
         self.pserver.start()
 
+        # input files
+        if type(inputfiles) is str:
+            self.inputfiles = [inputfiles]
+        elif type(inputfiles) is list:
+            for l in inputfiles:
+                if type(l) is not str:
+                    raise ValueError("Inputfiles argument must be list of file paths")
+                if not os.path.exists(l):
+                    raise ValueError("Input file does not exist")
+        # split the list
+        ninputfiles = len(inputfiles)
+        self.workerfiles = []
+        nfiles_per_worker  = ninputfiles/int(nworkers)
+        if nfiles_per_worker==0:
+            nfiles_per_worker = 1
+            nfiles_first_worker = 1
+        else:
+            # first worker takes the remainder
+            nfiles_first_worker = nfiles_per_worker + len(inputfiles)%int(nworkers)
+        
+
         # create the workers
-        self.pworkers = [ Process(target=__start_workers_v2__,
-                                  args=("{}-{}".format(identity,n),inputfile,address,load_func,batchsize,worker_verbosity))
-                          for n in xrange(nworkers) ]
+        ifile = 0
+        self.pworkers = []
+        for n in xrange(nworkers):
+            workerfiles = []
+            if n==0:
+                nfiles = nfiles_first_worker
+            else:
+                nfiles = nfiles_per_worker
+            for iwf in xrange(nfiles):
+                workerfiles.append( inputfiles[ifile] )
+                ifile += 1
+                if ifile>=ninputfiles:
+                    ifile = 0
+            process = Process(target=__start_workers_v2__,
+                              args=("{}-{}".format(identity,n),
+                                    workerfiles,address,load_func,func_params,
+                                    batchsize,worker_verbosity,io_tickbackward,n))
+            self.pworkers.append(process)
+            self.workerfiles.append(workerfiles)
+            print "Files assigned to worker[{}]: ".format(n)
+            for iwf,f in enumerate(workerfiles):
+                print "  [{}] {}".format(iwf,f)
+
         for pworker in self.pworkers:
             pworker.daemon = True
             pworker.start()

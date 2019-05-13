@@ -15,19 +15,38 @@ os.environ["GLOG_minloglevel"] = "1"
 class LArCVServerWorker( WorkerService ):
     """ This worker uses a user function to prepare data. """
 
-    def __init__( self,identity,inputfile,ipaddress,load_func,batchsize=None,verbosity=0):
+    def __init__( self,identity,inputfiles,ipaddress,load_func,
+                  seed=None,batchsize=None,verbosity=0,tickbackward=False,
+                  fetch_ntries=10,func_params={}):
         super( LArCVServerWorker, self ).__init__(identity,ipaddress,verbosity=verbosity)
-        self.inputfile = inputfile
-        self.io = larcv.IOManager(larcv.IOManager.kREAD)
-        self.io.add_in_file(self.inputfile)
+
+        self.tickorder = larcv.IOManager.kTickForward
+        if tickbackward:
+            self.tickorder = larcv.IOManager.kTickBackward
+
+        if type(inputfiles)==str:
+            self.inputfiles = [inputfiles]
+        elif type(inputfiles)==list:
+            self.inputfiles = inputfiles
+        else:
+            raise ValueError("'inputfile' must be type 'str' or 'list of str'")
+            
+        self.io = larcv.IOManager(larcv.IOManager.kREAD,"",self.tickorder)
+        for f in self.inputfiles:
+            self.io.add_in_file(f)
         self.io.initialize()
         self.nentries = self.io.get_n_entries()
         self.batchsize = batchsize
         self.products = {}
         self.compression_level = 4
         self.print_msg_size = False
-        self.num_reads = 0
-        self.load_func = load_func
+        self.num_reads    = 0
+        self.load_func    = load_func
+        self.func_params  = func_params
+        self.seed         = seed
+        self.fetch_ntries = fetch_ntries
+        np.random.seed(seed=self.seed)
+
         if not callable(self.load_func):
             raise ValueError("'load_func' argument needs to be a function returning a dict of numpy arrays")
         print "LArCVServerWorker[{}] is loaded.".format(self._identity)
@@ -37,24 +56,36 @@ class LArCVServerWorker( WorkerService ):
         """
         return True
 
-    def fetch_data(self):
+    def fetch_data(self,verbose=False):
         """ load up the next data set. we've already sent out the message. so here we try to hide latency while gpu running. """
 
         tstart = time.time()
+        
         # get data
-        indices = np.random.randint(0,high=self.nentries,size=(self.batchsize))
+        indices = np.random.randint(0,high=self.nentries,size=(self.batchsize+self.fetch_ntries))
         batch = []
         keylist = None
-        for ib,idx in enumerate(indices):
+        
+        for idx in indices:
+            data = None
             self.io.read_entry(idx)
-            batch.append( self.load_func( self.io ) )
-            if keylist is None:
-                keylist = batch[-1].keys()
+            data = self.load_func( self.io, **self.func_params )
+
+            if data is not None:
+                batch.append( data )
+                if keylist is None:
+                    keylist = batch[-1].keys()
+            if len(batch)>=self.batchsize:
+                break
+        
+        if len(batch)==0:
+            raise RuntimeError("Could not load any data")
 
         self.products = {}
         for k in keylist:
             nchannels = 1
             datashape = batch[0][k].shape
+            #print "fetchdata[{}]: ".format(k),datashape
             if len(datashape)==3:
                 nchannels = datashape[0]
             self.products[k] = np.zeros( (self.batchsize,nchannels,datashape[-2],datashape[-1]), dtype=batch[0][k].dtype )
@@ -63,6 +94,7 @@ class LArCVServerWorker( WorkerService ):
                 if self.products[k].shape[1]>1:
                     self.products[k][ib,:,:,:] = batchdata[k][:,:,:]
                 else:
+                    #print "shape: ",k," ",self.products[k].shape," ",batchdata[k].shape
                     self.products[k][ib,0,:,:] = batchdata[k][:,:]
             
         self.num_reads += 1
