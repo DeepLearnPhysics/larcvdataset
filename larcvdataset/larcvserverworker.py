@@ -15,24 +15,25 @@ os.environ["GLOG_minloglevel"] = "1"
 class LArCVServerWorker( WorkerService ):
     """ This worker uses a user function to prepare data. """
 
-    def __init__( self,identity,inputfile,ipaddress,load_func,
-                  batchsize=None,verbosity=0,tickbackward=False,
-                  readonly_products=None):
+    def __init__( self,identity,inputfiles,ipaddress,load_func,
+                  seed=None,batchsize=None,verbosity=0,tickbackward=False,
+                  fetch_ntries=100,func_params={},readonly_products=None):
         super( LArCVServerWorker, self ).__init__(identity,ipaddress,verbosity=verbosity)
-        if type(inputfile) is str:
-            self.inputfiles = [inputfile]
-        elif type(inputfile) is list:
-            self.inputfiles = inputfile
+
+        self.tickorder = larcv.IOManager.kTickForward
+        if tickbackward:
+            self.tickorder = larcv.IOManager.kTickBackward
+
+        if type(inputfiles)==str:
+            self.inputfiles = [inputfiles]
+        elif type(inputfiles)==list:
+            self.inputfiles = inputfiles
         else:
-            raise ValueError("argument inputfile should be either str or list. received {}".format(type(inputfile)))
+            raise ValueError("'inputfile' must be type 'str' or 'list of str'")
             
-        if not tickbackward:
-            self.io = larcv.IOManager(larcv.IOManager.kREAD,identity)
-        else:
-            # this supports reading old larcv1 data
-            self.io = larcv.IOManager(larcv.IOManager.kREAD,identity,larcv.IOManager.kTickBackward)
-        for ifile in self.inputfiles:
-            self.io.add_in_file(ifile)
+        self.io = larcv.IOManager(larcv.IOManager.kREAD,"",self.tickorder)
+        for f in self.inputfiles:
+            self.io.add_in_file(f)
 
         if readonly_products is not None:
             if type(readonly_products) is not list and type(readonly_products) is not tuple:
@@ -41,14 +42,20 @@ class LArCVServerWorker( WorkerService ):
                 if len(product)<2 or type(product[1]) is not int or type(product[0]) is not str:
                     raise ValueError("readonly_products argument should be a list or tuple of (\"name\",larcv type) pairs")
                 self.io.specify_data_read( product[1], product[0] )
-                
+            
         self.io.initialize()
+        
         self.nentries = self.io.get_n_entries()
         self.batchsize = batchsize
         self.compression_level = 4
         self.print_msg_size = False
-        self.num_reads = 0
-        self.load_func = load_func
+        self.num_reads    = 0
+        self.load_func    = load_func
+        self.func_params  = func_params
+        self.seed         = seed
+        self.fetch_ntries = fetch_ntries
+        np.random.seed(seed=self.seed)
+
         if not callable(self.load_func):
             raise ValueError("'load_func' argument needs to be a function returning a dict of numpy arrays")
         print "LArCVServerWorker[{}] is loaded.".format(self._identity)
@@ -58,19 +65,22 @@ class LArCVServerWorker( WorkerService ):
         """
         return True
 
-    def fetch_data(self):
+    def fetch_data(self,verbose=False):
         """ load up the next data set. we've already sent out the message. so here we try to hide latency while gpu running. """
 
         tstart = time.time()
+        
         # get data
+
         # we set the seed with the time before calling random
-        maxtries = 100
         np.random.seed(seed=None)
-        indices = np.random.randint(0,high=self.nentries,size=(self.batchsize+maxtries))
+
+        # draw random number of indices
+        indices = np.random.randint(0,high=self.nentries,size=(self.batchsize+self.fetch_ntries))
         batch = []
 
         itry = 0
-        while (len(batch)<self.batchsize and itry<maxtries):
+        while (len(batch)<self.batchsize and itry<self.fetch_ntries):
             idx = indices[itry]
             data = None
             self.io.read_entry(idx)
@@ -78,7 +88,7 @@ class LArCVServerWorker( WorkerService ):
             if data is not None:
                 batch.append( data )
             else:
-                print "LArCVServerWorker[{}] fetched data return none, try {} of {}".format(self._identity,itry+1,maxtries)
+                print "LArCVServerWorker[{}] fetched data return none, try {} of {}".format(self._identity,itry+1,self.fetch_ntries)
                 pass # try again
             itry += 1
             
